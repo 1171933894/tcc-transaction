@@ -13,12 +13,21 @@ import java.lang.reflect.Method;
 @Target({ElementType.METHOD})
 public @interface Compensable {
 
+    /**
+     * 传播级别
+     */
     public Propagation propagation() default Propagation.REQUIRED;
-
+    /**
+     * 确认执行业务方法
+     */
     public String confirmMethod() default "";
-
+    /**
+     * 取消执行业务方法
+     */
     public String cancelMethod() default "";
-
+    /**
+     * 事务上下文编辑
+     */
     public Class<? extends TransactionContextEditor> transactionContextEditor() default DefaultTransactionContextEditor.class;
 
     public Class<? extends Exception>[] delayCancelExceptions() default {};
@@ -40,6 +49,9 @@ public @interface Compensable {
         }
     }
 
+    /**
+     * 默认事务上下文编辑器实现
+     */
     class DefaultTransactionContextEditor implements TransactionContextEditor {
 
         @Override
@@ -58,10 +70,16 @@ public @interface Compensable {
 
             int position = getTransactionContextParamPosition(method.getParameterTypes());
             if (position >= 0) {
-                args[position] = transactionContext;
+                args[position] = transactionContext;// 设置方法参数
             }
         }
 
+        /**
+         * 获得事务上下文在方法参数里的位置
+         *
+         * @param parameterTypes 参数类型集合
+         * @return 位置
+         */
         public static int getTransactionContextParamPosition(Class<?>[] parameterTypes) {
 
             int position = -1;

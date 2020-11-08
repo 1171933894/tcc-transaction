@@ -13,13 +13,21 @@ import java.io.Serializable;
 public class Participant implements Serializable {
 
     private static final long serialVersionUID = 4127729421281425247L;
-
+    /**
+     * 事务编号
+     */
     private TransactionXid xid;
-
+    /**
+     * 确认执行业务方法调用上下文
+     */
     private InvocationContext confirmInvocationContext;
-
+    /**
+     * 取消执行业务方法调用上下文
+     */
     private InvocationContext cancelInvocationContext;
-
+    /**
+     * 事务上下文编辑
+     */
     Class<? extends TransactionContextEditor> transactionContextEditorClass;
 
     public Participant() {
@@ -42,11 +50,15 @@ public class Participant implements Serializable {
     public void setXid(TransactionXid xid) {
         this.xid = xid;
     }
-
+    /**
+     * 回滚事务
+     */
     public void rollback() {
         Terminator.invoke(new TransactionContext(xid, TransactionStatus.CANCELLING.getId()), cancelInvocationContext, transactionContextEditorClass);
     }
-
+    /**
+     * 提交事务
+     */
     public void commit() {
         Terminator.invoke(new TransactionContext(xid, TransactionStatus.CONFIRMING.getId()), confirmInvocationContext, transactionContextEditorClass);
     }

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * 工厂 Builder
+ *
  * Created by changming.xie on 2/23/17.
  */
 public final class FactoryBuilder {
@@ -14,20 +16,34 @@ public final class FactoryBuilder {
 
     }
 
+    /**
+     * Bean 工厂集合
+     */
     private static List<BeanFactory> beanFactories = new ArrayList<BeanFactory>();
-
+    /**
+     * 类 与 Bean工厂 的映射
+     */
     private static ConcurrentHashMap<Class, SingeltonFactory> classFactoryMap = new ConcurrentHashMap<Class, SingeltonFactory>();
 
+    /**
+     * 获得指定类单例工厂
+     *
+     * @param clazz 指定类
+     * @param <T>   泛型
+     * @return 单例工厂
+     */
     public static <T> SingeltonFactory<T> factoryOf(Class<T> clazz) {
 
         if (!classFactoryMap.containsKey(clazz)) {
 
+            // 优先从 Bean 工厂集合 获取
             for (BeanFactory beanFactory : beanFactories) {
                 if (beanFactory.isFactoryOf(clazz)) {
                     classFactoryMap.putIfAbsent(clazz, new SingeltonFactory<T>(clazz, beanFactory.getBean(clazz)));
                 }
             }
 
+            // 查找不到，创建 SingletonFactory
             if (!classFactoryMap.containsKey(clazz)) {
                 classFactoryMap.putIfAbsent(clazz, new SingeltonFactory<T>(clazz));
             }
@@ -36,14 +52,28 @@ public final class FactoryBuilder {
         return classFactoryMap.get(clazz);
     }
 
+    /**
+     * 将 Bean工厂 注册到当前 Builder
+     *
+     * @param beanFactory Bean工厂
+     */
     public static void registerBeanFactory(BeanFactory beanFactory) {
         beanFactories.add(beanFactory);
     }
 
+    /**
+     * 单例工厂
+     *
+     * @param <T> 泛型
+     */
     public static class SingeltonFactory<T> {
-
+        /**
+         * 单例
+         */
         private volatile T instance = null;
-
+        /**
+         * 类名
+         */
         private String className;
 
         public SingeltonFactory(Class<T> clazz, T instance) {
@@ -55,9 +85,14 @@ public final class FactoryBuilder {
             this.className = clazz.getName();
         }
 
+        /**
+         * 获得单例
+         *
+         * @return 单例
+         */
         public T getInstance() {
 
-            if (instance == null) {
+            if (instance == null) {// 不存在时，创建单例
                 synchronized (SingeltonFactory.class) {
                     if (instance == null) {
                         try {

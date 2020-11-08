@@ -40,12 +40,14 @@ public class CompensableTransactionInterceptor {
 
         CompensableMethodContext compensableMethodContext = new CompensableMethodContext(pjp);
 
+        // 当前线程是否在事务中
         boolean isTransactionActive = transactionManager.isTransactionActive();
-
+        // 判断事务上下文是否合法
         if (!TransactionUtils.isLegalTransactionContext(isTransactionActive, compensableMethodContext)) {
             throw new SystemException("no active compensable transaction while propagation is mandatory for method " + compensableMethodContext.getMethod().getName());
         }
 
+        // 计算方法类型
         switch (compensableMethodContext.getMethodRole(isTransactionActive)) {
             case ROOT:
                 return rootMethodProceed(compensableMethodContext);
@@ -73,26 +75,26 @@ public class CompensableTransactionInterceptor {
 
         try {
 
-            transaction = transactionManager.begin(compensableMethodContext.getUniqueIdentity());
+            transaction = transactionManager.begin(compensableMethodContext.getUniqueIdentity());// 发起根事务
 
             try {
-                returnValue = compensableMethodContext.proceed();
+                returnValue = compensableMethodContext.proceed();// 执行方法原逻辑
             } catch (Throwable tryingException) {
 
-                if (!isDelayCancelException(tryingException, allDelayCancelExceptions)) {
+                if (!isDelayCancelException(tryingException, allDelayCancelExceptions)) {// 是否延迟回滚（部分异常不适合立即回滚事务）
 
                     logger.warn(String.format("compensable transaction trying failed. transaction content:%s", JSON.toJSONString(transaction)), tryingException);
 
-                    transactionManager.rollback(asyncCancel);
+                    transactionManager.rollback(asyncCancel);// 回滚事务
                 }
 
                 throw tryingException;
             }
 
-            transactionManager.commit(asyncConfirm);
+            transactionManager.commit(asyncConfirm);// 提交事务
 
         } finally {
-            transactionManager.cleanAfterCompletion(transaction);
+            transactionManager.cleanAfterCompletion(transaction);// 将事务从当前线程事务队列移除
         }
 
         return returnValue;
