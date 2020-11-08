@@ -13,6 +13,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 /**
+ * Kyro 序列化实现
+ *
  * Created by changming.xie on 9/18/17.
  */
 public class KryoPoolSerializer implements ObjectSerializer<Transaction> {

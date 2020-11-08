@@ -16,6 +16,10 @@ import java.util.Date;
 import java.util.List;
 
 /**
+ * File 事务存储器，将 Transaction 存储到文件系统
+ *
+ *      在生产上不建议使用 FileSystemTransactionRepository，因为不支持多节点共享。用分布式存储挂载文件另说，当然还是不建议，因为不支持乐观锁并发更新
+ *
  * Created by changming.xie on 2/24/16.
  * this repository is suitable for single node, not for cluster nodes
  */

@@ -25,7 +25,7 @@ public class RecoverScheduledJob {
             jobDetail.setTargetObject(transactionRecovery);
             jobDetail.setTargetMethod("startRecover");
             jobDetail.setName("transactionRecoveryJob");
-            jobDetail.setConcurrent(false);
+            jobDetail.setConcurrent(false);// 禁止并发
             jobDetail.afterPropertiesSet();
 
             CronTriggerFactoryBean cronTrigger = new CronTriggerFactoryBean();

@@ -21,7 +21,13 @@ public interface TransactionDao {
     void resetRetryCount(String globalTxId, String branchQualifier);
 
     String getDomain();
-
+    /**
+     * 获得事务 VO 数组
+     *
+     * @param pageNum 第几页
+     * @param pageSize 分页大小
+     * @return 事务 VO 数组
+     */
     PageDto<TransactionVo> findTransactions(Integer pageNum, int pageSize);
 
     PageDto<TransactionVo> findDeletedTransactions(Integer pageNum, int pageSize);

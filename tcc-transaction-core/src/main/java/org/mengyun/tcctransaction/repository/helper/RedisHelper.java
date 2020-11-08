@@ -19,6 +19,13 @@ public class RedisHelper {
 
     private static Logger logger = Logger.getLogger(RedisHelper.class);
 
+    /**
+     * 创建事务的 Redis Key
+     *
+     * @param keyPrefix key 前缀
+     * @param xid       事务
+     * @return Redis Key
+     */
     public static byte[] getRedisKey(String keyPrefix, Xid xid) {
         return new StringBuilder().append(keyPrefix).append(xid.toString()).toString().getBytes();
     }

@@ -17,16 +17,51 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
+ * JDBC 事务存储器，通过 JDBC 驱动，将 Transaction 存储到 MySQL / Oracle / PostgreSQL / SQLServer 等关系数据库
+ *
+ * 表结构如下：
+ * CREATE TABLE `TCC_TRANSACTION` (
+ *   `TRANSACTION_ID` int(11) NOT NULL AUTO_INCREMENT,
+ *   `DOMAIN` varchar(100) DEFAULT NULL,
+ *   `GLOBAL_TX_ID` varbinary(32) NOT NULL,
+ *   `BRANCH_QUALIFIER` varbinary(32) NOT NULL,
+ *   `CONTENT` varbinary(8000) DEFAULT NULL,
+ *   `STATUS` int(11) DEFAULT NULL,
+ *   `TRANSACTION_TYPE` int(11) DEFAULT NULL,
+ *   `RETRIED_COUNT` int(11) DEFAULT NULL,
+ *   `CREATE_TIME` datetime DEFAULT NULL,
+ *   `LAST_UPDATE_TIME` datetime DEFAULT NULL,
+ *   `VERSION` int(11) DEFAULT NULL,
+ *   PRIMARY KEY (`TRANSACTION_ID`),
+ *   UNIQUE KEY `UX_TX_BQ` (`GLOBAL_TX_ID`,`BRANCH_QUALIFIER`)
+ * ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+ *
  * Created by changmingxie on 10/30/15.
  */
 public class JdbcTransactionRepository extends CachableTransactionRepository {
-
+    /**
+     * 领域
+     *
+     * 领域，或者也可以称为模块名，应用名，用于唯一标识一个资源。例如，Maven 模块 xxx-order，我们可以配置该属性为 ORDER
+     */
     private String domain;
-
+    /**
+     * 表后缀
+     *
+     * 默认存储表名为 TCC_TRANSACTION，配置表名后，为 TCC_TRANSACTION${tbSuffix}
+     */
     private String tbSuffix;
-
+    /**
+     * 数据源
+     *
+     * 存储数据的数据源
+     */
     private DataSource dataSource;
-
+    /**
+     * 序列化
+     *
+     * 序列化。**当数据库里已经有数据的情况下，不要更换别的序列化，否则会导致反序列化报错。**建议：TCC-Transaction 存储时，新增字段，记录序列化的方式。
+     */
     private ObjectSerializer serializer = new KryoPoolSerializer();
 
     public String getDomain() {

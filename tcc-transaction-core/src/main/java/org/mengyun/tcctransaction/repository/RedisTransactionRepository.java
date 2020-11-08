@@ -24,9 +24,13 @@ import java.util.*;
 public class RedisTransactionRepository extends CachableTransactionRepository {
 
     private static final Logger logger = Logger.getLogger(RedisTransactionRepository.class.getSimpleName());
-
+    /**
+     * Jedis Pool
+     */
     private JedisPool jedisPool;
-
+    /**
+     * key 前缀
+     */
     private String keyPrefix = "TCC:";
 
     private int fetchKeySize = 1000;
@@ -38,7 +42,9 @@ public class RedisTransactionRepository extends CachableTransactionRepository {
     public void setKeyPrefix(String keyPrefix) {
         this.keyPrefix = keyPrefix;
     }
-
+    /**
+     * 序列化
+     */
     private ObjectSerializer serializer = new KryoPoolSerializer();
 
     public void setSerializer(ObjectSerializer serializer) {
@@ -185,9 +191,9 @@ public class RedisTransactionRepository extends CachableTransactionRepository {
 
     @Override
     protected List<Transaction> doFindAllUnmodifiedSince(Date date) {
-
+        // 获得所有事务
         List<Transaction> allTransactions = doFindAll();
-
+        // 过滤时间
         List<Transaction> allUnmodifiedSince = new ArrayList<Transaction>();
 
         for (Transaction transaction : allTransactions) {

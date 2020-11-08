@@ -1,6 +1,8 @@
 package org.mengyun.tcctransaction.serializer;
 
 /**
+ * 目前提供 JDK自带序列化 和 Kyro序列化 两种实现
+ *
  * Created by changming.xie on 7/22/16.
  */
 public interface ObjectSerializer<T> {
