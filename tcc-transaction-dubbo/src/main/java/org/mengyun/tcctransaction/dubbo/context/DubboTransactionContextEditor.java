@@ -12,6 +12,8 @@ import java.lang.reflect.Method;
 /**
  * Dubbo 事务上下文编辑器实现，通过 Dubbo 隐式传参方式获得事务上下文
  *
+ *      通过 Dubbo 的隐式传参的方式，避免在 Dubbo Service 接口上声明 TransactionContext 参数，对接口产生一定的入侵
+ *
  * Created by changming.xie on 1/19/17.
  */
 public class DubboTransactionContextEditor implements TransactionContextEditor {

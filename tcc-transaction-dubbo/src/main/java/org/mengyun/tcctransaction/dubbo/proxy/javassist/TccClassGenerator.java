@@ -54,22 +54,36 @@ public final class TccClassGenerator {
         return pool;
     }
 
+    /**
+     * CtClass hash 集合
+     * key：类名
+     */
     private ClassPool mPool;
 
     private CtClass mCtc;
 
     private String mClassName, mSuperClass;
-
+    /**
+     * 生成类的接口集合
+     */
     private Set<String> mInterfaces;
-
+    /**
+     * 生成类的属性集合
+     * 生成类的非空构造方法代码集合
+     * 生成类的方法代码集合
+     */
     private List<String> mFields, mConstructors, mMethods;
-
+    /**
+     * 带 @Compensable 方法代码集合
+     */
     private Set<String> compensableMethods = new HashSet<String>();
 
     private Map<String, Method> mCopyMethods; // <method desc,method instance>
 
     private Map<String, Constructor<?>> mCopyConstructors; // <constructor desc,constructor instance>
-
+    /**
+     * 默认空构造方法
+     */
     private boolean mDefaultConstructor = false;
 
     private TccClassGenerator() {
@@ -144,6 +158,7 @@ public final class TccClassGenerator {
     }
 
     public TccClassGenerator addMethod(boolean isCompensableMethod, String name, int mod, Class<?> rt, Class<?>[] pts, Class<?>[] ets, String body) {
+        // 拼接方法
         StringBuilder sb = new StringBuilder();
 
         sb.append(modifier(mod)).append(' ').append(ReflectUtils.getName(rt)).append(' ').append(name);
@@ -164,7 +179,7 @@ public final class TccClassGenerator {
             }
         }
         sb.append('{').append(body).append('}');
-
+        // 是否有 @Compensable 注解
         if (isCompensableMethod) {
             compensableMethods.add(sb.toString());
         }
@@ -239,23 +254,25 @@ public final class TccClassGenerator {
     }
 
     public Class<?> toClass() {
+        // mCtc 非空时，进行释放；下面会进行创建 mCtc
         if (mCtc != null)
             mCtc.detach();
         long id = CLASS_NAME_COUNTER.getAndIncrement();
         try {
             CtClass ctcs = mSuperClass == null ? null : mPool.get(mSuperClass);
-            if (mClassName == null)
+            if (mClassName == null)// 类名
                 mClassName = (mSuperClass == null || javassist.Modifier.isPublic(ctcs.getModifiers())
                         ? TccClassGenerator.class.getName() : mSuperClass + "$sc") + id;
+            // 创建 mCtc
             mCtc = mPool.makeClass(mClassName);
-            if (mSuperClass != null)
+            if (mSuperClass != null)// 继承类
                 mCtc.setSuperclass(ctcs);
             mCtc.addInterface(mPool.get(DC.class.getName())); // add dynamic class tag.
-            if (mInterfaces != null)
+            if (mInterfaces != null)// 实现接口集合
                 for (String cl : mInterfaces) mCtc.addInterface(mPool.get(cl));
-            if (mFields != null)
+            if (mFields != null)// 属性集合
                 for (String code : mFields) mCtc.addField(CtField.make(code, mCtc));
-            if (mMethods != null) {
+            if (mMethods != null) {// 方法集合
                 for (String code : mMethods) {
                     if (code.charAt(0) == ':')
                         mCtc.addMethod(CtNewMethod.copy(getCtMethod(mCopyMethods.get(code.substring(1))), code.substring(1, code.indexOf('(')), mCtc, null));
@@ -264,7 +281,7 @@ public final class TccClassGenerator {
                         CtMethod ctMethod = CtNewMethod.make(code, mCtc);
 
                         if (compensableMethods.contains(code)) {
-
+                            // 设置 @Compensable 属性
                             ConstPool constpool = mCtc.getClassFile().getConstPool();
                             AnnotationsAttribute attr = new AnnotationsAttribute(constpool, AnnotationsAttribute.visibleTag);
                             Annotation annot = new Annotation("org.mengyun.tcctransaction.api.Compensable", constpool);

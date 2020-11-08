@@ -12,6 +12,12 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 一个 Dubbo Service，TccProxy 会动态生成两个类：
+ *
+ *      Dubbo Service 调用 Proxy
+ *      Dubbo Service 调用 ProxyFactory，生成对应的 Dubbo Service Proxy
+ */
 public abstract class TccProxy {
     private static final AtomicLong PROXY_CLASS_COUNTER = new AtomicLong(0);
 
@@ -29,6 +35,12 @@ public abstract class TccProxy {
         }
     };
 
+    /**
+     * Proxy 对象缓存
+     * key ：ClassLoader
+     * value.key ：Tcc Proxy 标识。使用 Tcc Proxy 实现接口名拼接
+     * value.value ：Tcc Proxy 工厂对象
+     */
     private static final Map<ClassLoader, Map<String, Object>> ProxyCacheMap = new WeakHashMap<ClassLoader, Map<String, Object>>();
 
     private static final Object PendingGenerationMarker = new Object();
@@ -51,22 +63,24 @@ public abstract class TccProxy {
      * @return TccProxy instance.
      */
     public static TccProxy getProxy(ClassLoader cl, Class<?>... ics) {
+        // 校验接口超过上限
         if (ics.length > 65535)
             throw new IllegalArgumentException("interface limit exceeded");
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ics.length; i++) {
             String itf = ics[i].getName();
+            // 校验是否为接口
             if (!ics[i].isInterface())
                 throw new RuntimeException(itf + " is not a interface.");
-
+            // 加载接口类
             Class<?> tmp = null;
             try {
                 tmp = Class.forName(itf, false, cl);
             } catch (ClassNotFoundException e) {
             }
 
-            if (tmp != ics[i])
+            if (tmp != ics[i])// 加载接口类失败
                 throw new IllegalArgumentException(ics[i] + " is not visible from class loader");
 
             sb.append(itf).append(';');
@@ -84,17 +98,18 @@ public abstract class TccProxy {
                 ProxyCacheMap.put(cl, cache);
             }
         }
-
+        // 获得 TccProxy 工厂
         TccProxy proxy = null;
         synchronized (cache) {
             do {
+                // 从缓存中获取 TccProxy 工厂
                 Object value = cache.get(key);
                 if (value instanceof Reference<?>) {
                     proxy = (TccProxy) ((Reference<?>) value).get();
                     if (proxy != null)
                         return proxy;
                 }
-
+                // 缓存中不存在，设置生成 TccProxy 代码标记。创建中时，其他创建请求等待，避免并发。
                 if (value == PendingGenerationMarker) {
                     try {
                         cache.wait();
@@ -112,29 +127,32 @@ public abstract class TccProxy {
         String pkg = null;
         TccClassGenerator ccp = null, ccm = null;
         try {
+            // 创建 Tcc class 代码生成器
             ccp = TccClassGenerator.newInstance(cl);
 
-            Set<String> worked = new HashSet<String>();
-            List<Method> methods = new ArrayList<Method>();
-
+            Set<String> worked = new HashSet<String>();// 已处理方法签名集合。key：方法签名
+            List<Method> methods = new ArrayList<Method>();// 已处理方法集合。
+            // 处理接口
             for (int i = 0; i < ics.length; i++) {
+                // 非 public 接口，使用接口包名
                 if (!Modifier.isPublic(ics[i].getModifiers())) {
                     String npkg = ics[i].getPackage().getName();
                     if (pkg == null) {
                         pkg = npkg;
                     } else {
-                        if (!pkg.equals(npkg))
+                        if (!pkg.equals(npkg))// 实现了两个非 public 的接口
                             throw new IllegalArgumentException("non-public interfaces from different packages");
                     }
                 }
+                // 添加接口
                 ccp.addInterface(ics[i]);
-
+                // 处理接口方法
                 for (Method method : ics[i].getMethods()) {
                     String desc = ReflectUtils.getDesc(method);
                     if (worked.contains(desc))
                         continue;
                     worked.add(desc);
-
+                    // 生成接口方法实现代码
                     int ix = methods.size();
                     Class<?> rt = method.getReturnType();
                     Class<?>[] pts = method.getParameterTypes();
@@ -149,7 +167,7 @@ public abstract class TccProxy {
                     methods.add(method);
 
                     StringBuilder compensableDesc = new StringBuilder();
-
+                    // 添加方法
                     Compensable compensable = method.getAnnotation(Compensable.class);
 
                     if (compensable != null) {
@@ -159,28 +177,41 @@ public abstract class TccProxy {
                     }
                 }
             }
-
+            // 设置包路径
             if (pkg == null)
                 pkg = PACKAGE_NAME;
-
+            // 设置类名
             // create ProxyInstance class.
             String pcn = pkg + ".proxy" + id;
             ccp.setClassName(pcn);
+            // 添加静态属性 methods
             ccp.addField("public static java.lang.reflect.Method[] methods;");
+            // 添加属性 handler
             ccp.addField("private " + InvocationHandler.class.getName() + " handler;");
+            // 添加构造方法，参数 handler
             ccp.addConstructor(Modifier.PUBLIC, new Class<?>[]{InvocationHandler.class}, new Class<?>[0], "handler=$1;");
+            // 添加构造方法，参数 空
             ccp.addDefaultConstructor();
+            // 生成类
             Class<?> clazz = ccp.toClass();
+            // 设置静态属性 methods
             clazz.getField("methods").set(null, methods.toArray(new Method[0]));
 
             // create TccProxy class.
+            // 设置类名
             String fcn = TccProxy.class.getName() + id;
+            // 创建 Tcc class 代码生成器
             ccm = TccClassGenerator.newInstance(cl);
             ccm.setClassName(fcn);
+            // 添加构造方法，参数 空
             ccm.addDefaultConstructor();
+            // 设置父类为 TccProxy.class
             ccm.setSuperClass(TccProxy.class);
+            // 添加方法 #newInstance(handler)
             ccm.addMethod("public Object newInstance(" + InvocationHandler.class.getName() + " h){ return new " + pcn + "($1); }");
+            // 生成类
             Class<?> pc = ccm.toClass();
+            // 创建 TccProxy 对象
             proxy = (TccProxy) pc.newInstance();
         } catch (RuntimeException e) {
             throw e;
@@ -192,6 +223,7 @@ public abstract class TccProxy {
                 ccp.release();
             if (ccm != null)
                 ccm.release();
+            // 唤醒缓存 wait
             synchronized (cache) {
                 if (proxy == null)
                     cache.remove(key);

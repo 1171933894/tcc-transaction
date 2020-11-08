@@ -5,6 +5,8 @@ import org.apache.dubbo.rpc.proxy.InvokerInvocationHandler;
 import org.apache.dubbo.rpc.proxy.javassist.JavassistProxyFactory;
 
 /**
+ * TCC Javassist 代理工厂
+ *
  * Created by changming.xie on 1/14/17.
  */
 public class TccJavassistProxyFactory extends JavassistProxyFactory {
