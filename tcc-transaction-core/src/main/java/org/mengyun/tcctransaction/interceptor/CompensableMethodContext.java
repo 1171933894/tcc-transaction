@@ -95,6 +95,9 @@ public class CompensableMethodContext {
      * @return 方法类型
      */
     public MethodRole getMethodRole(boolean isTransactionActive) {
+        // Compensable.propagation默认是REQUIRED，也就是事务发起方为REQUIRED
+        // 事务参与方配置了为SUPPORTS
+        // 远程事务参与方没有配置默认REQUIRED
         if ((propagation.equals(Propagation.REQUIRED) && !isTransactionActive && transactionContext == null) ||// Propagation.REQUIRED：支持当前事务，当前没有事务，就新建一个事务。
                 propagation.equals(Propagation.REQUIRES_NEW)) {// Propagation.REQUIRES_NEW：新建事务，如果当前存在事务，把当前事务挂起。
             /**
@@ -102,7 +105,7 @@ public class CompensableMethodContext {
              *      事务传播级别为 Propagation.REQUIRED，并且当前没有事务。
              *      事务传播级别为 Propagation.REQUIRES_NEW，新建事务，如果当前存在事务，把当前事务挂起。此时，事务管理器的当前线程事务队列可能会存在多个事务。
              */
-            return MethodRole.ROOT;
+            return MethodRole.ROOT;// 事务发起方
         } else if ((propagation.equals(Propagation.REQUIRED) // Propagation.REQUIRED：支持当前事务
                 || propagation.equals(Propagation.MANDATORY)) && !isTransactionActive && transactionContext != null) {// Propagation.MANDATORY：支持当前事务
             /**
@@ -111,12 +114,12 @@ public class CompensableMethodContext {
              *      事务传播级别为 Propagation.PROVIDER，并且当前不存在事务，并且方法参数传递了事务上下文。
              *      当前不存在事务，方法参数传递了事务上下文是什么意思？当跨服务远程调用时，被调用服务本身( 服务提供者 )不在事务中，通过传递事务上下文参数，融入当前事务。
              */
-            return MethodRole.PROVIDER;
+            return MethodRole.PROVIDER;// 远程事务参与方（服务提供者）
         } else {
             /**
              * 方法类型为 MethodType.Normal 时，不进行事务处理
              */
-            return MethodRole.NORMAL;
+            return MethodRole.NORMAL;// 事务参与方（也就是官方文档为什么要说配置成SUPPORTS）
         }
     }
 

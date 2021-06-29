@@ -60,6 +60,7 @@ public class Participant implements Serializable {
      * 提交事务
      */
     public void commit() {
+        // 反射调用confirm方法
         Terminator.invoke(new TransactionContext(xid, TransactionStatus.CONFIRMING.getId()), confirmInvocationContext, transactionContextEditorClass);
     }
 

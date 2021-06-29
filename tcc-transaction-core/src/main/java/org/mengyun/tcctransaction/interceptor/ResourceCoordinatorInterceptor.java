@@ -30,13 +30,17 @@ public class ResourceCoordinatorInterceptor {
 
     public Object interceptTransactionContextMethod(ProceedingJoinPoint pjp) throws Throwable {
 
+        // 获取当前事务，事务发起方（rootMethodProceed中绑定线程）
+        // 和远程事务参与方（providerMethodProceed中绑定线程）
         Transaction transaction = transactionManager.getCurrentTransaction();
 
         if (transaction != null) {
-
+            // 判断当前事务状态
             switch (transaction.getStatus()) {
                 case TRYING:
-                    // 添加事务参与者
+                    // 事务发起方和事务参与方在一个系统，然后他们在一个Transaction中，下面这个方法就是把它们抽象化为Participant放到Transaction中
+                    // 远程事务参与方在另外一个系统，会有自己的Transaction，只不过它的Transaction.xid与发起方系统的Transaction一致，上面已经解释
+                    // Participant包括了try\confirm\cancel等方法，供事务管理器CompensableTransactionInterceptor调用
                     enlistParticipant(pjp);
                     break;
                 case CONFIRMING:
@@ -65,7 +69,9 @@ public class ResourceCoordinatorInterceptor {
         TransactionXid xid = new TransactionXid(transaction.getXid().getGlobalTransactionId());
 
         if (FactoryBuilder.factoryOf(compensable.transactionContextEditor()).getInstance().get(pjp.getTarget(), method, pjp.getArgs()) == null) {
-            FactoryBuilder.factoryOf(compensable.transactionContextEditor()).getInstance().set(new TransactionContext(xid, TransactionStatus.TRYING.getId()), pjp.getTarget(), ((MethodSignature) pjp.getSignature()).getMethod(), pjp.getArgs());
+            FactoryBuilder.factoryOf(compensable.transactionContextEditor())
+                    .getInstance()
+                    .set(new TransactionContext(xid, TransactionStatus.TRYING.getId()), pjp.getTarget(), ((MethodSignature) pjp.getSignature()).getMethod(), pjp.getArgs());
         }
         // 获得类
         Class targetClass = ReflectionUtils.getDeclaringType(pjp.getTarget().getClass(), method.getName(), method.getParameterTypes());

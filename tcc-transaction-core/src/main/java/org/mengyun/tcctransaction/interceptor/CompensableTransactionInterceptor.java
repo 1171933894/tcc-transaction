@@ -37,10 +37,13 @@ public class CompensableTransactionInterceptor {
     }
 
     public Object interceptCompensableMethod(ProceedingJoinPoint pjp) throws Throwable {
-
+        // compensableMethodContext包含transactionContext，从被拦截的方法入参中获取，
+        // 通过.Compensable#transactionContextEditor（默认DefaultTransactionContextEditor）
+        // 如果是事务发起方transactionContext就为null，事务参与方就取方法参数里的transactionContext
+        //（从代码里看，也不一定非要transactionContext在方法参数第一位，只要有这个参数就行）
         CompensableMethodContext compensableMethodContext = new CompensableMethodContext(pjp);
 
-        // 当前线程是否在事务中
+        // 当前线程是否绑定事务Transaction，事务发起方调用为null，远程事务参与方一开始也为null
         boolean isTransactionActive = transactionManager.isTransactionActive();
         // 判断事务上下文是否合法
         if (!TransactionUtils.isLegalTransactionContext(isTransactionActive, compensableMethodContext)) {
@@ -49,11 +52,11 @@ public class CompensableTransactionInterceptor {
 
         // 计算方法类型
         switch (compensableMethodContext.getMethodRole(isTransactionActive)) {
-            case ROOT:
+            case ROOT:// 事务发起方走这里
                 return rootMethodProceed(compensableMethodContext);
-            case PROVIDER:
+            case PROVIDER:// 远程事务参与方走这里
                 return providerMethodProceed(compensableMethodContext);
-            default:
+            default:// 事务参与方走这里，会走到ResourceCoordinatorInterceptor
                 return pjp.proceed();
         }
     }
@@ -64,9 +67,9 @@ public class CompensableTransactionInterceptor {
         Object returnValue = null;
 
         Transaction transaction = null;
-
+        // 是否开启异步confirm模式，这样可以提高性能
         boolean asyncConfirm = compensableMethodContext.getAnnotation().asyncConfirm();
-
+        // 是否开启异步cancel模式，这样可以提高性能
         boolean asyncCancel = compensableMethodContext.getAnnotation().asyncCancel();
 
         Set<Class<? extends Exception>> allDelayCancelExceptions = new HashSet<Class<? extends Exception>>();
@@ -74,27 +77,32 @@ public class CompensableTransactionInterceptor {
         allDelayCancelExceptions.addAll(Arrays.asList(compensableMethodContext.getAnnotation().delayCancelExceptions()));
 
         try {
-
+            // 创建事务，并持久化，绑定事务到当前线程
             transaction = transactionManager.begin(compensableMethodContext.getUniqueIdentity());// 发起根事务
 
             try {
-                returnValue = compensableMethodContext.proceed();// 执行方法原逻辑
+                // 这里直接走到ResourceCoordinatorInterceptor
+                // 其实这里最后，就是事务发起方的try方法
+                returnValue = compensableMethodContext.proceed();
             } catch (Throwable tryingException) {
 
                 if (!isDelayCancelException(tryingException, allDelayCancelExceptions)) {// 是否延迟回滚（部分异常不适合立即回滚事务）
 
                     logger.warn(String.format("compensable transaction trying failed. transaction content:%s", JSON.toJSONString(transaction)), tryingException);
-
+                    // 如果try失败，就执行参与者的cancel方法
+                    // 这个时候参与者都初始化完毕（事务参与方是在事务发起方的try方法里执行，
+                    // 走到这里就已经初始化里所有Participant，参考ResourceCoordinatorInterceptor）
                     transactionManager.rollback(asyncCancel);// 回滚事务
                 }
 
                 throw tryingException;
             }
-
+            // try成功就执行参与者的confirm方法
             transactionManager.commit(asyncConfirm);// 提交事务
 
         } finally {
-            transactionManager.cleanAfterCompletion(transaction);// 将事务从当前线程事务队列移除
+            // 清除线程中缓存的Transaction
+            transactionManager.cleanAfterCompletion(transaction);
         }
 
         return returnValue;
@@ -104,29 +112,31 @@ public class CompensableTransactionInterceptor {
 
         Transaction transaction = null;
 
-
         boolean asyncConfirm = compensableMethodContext.getAnnotation().asyncConfirm();
 
         boolean asyncCancel = compensableMethodContext.getAnnotation().asyncCancel();
 
         try {
-
+            // 远程事务参与方的transactionContext不为null，由事务发起方传过来
             switch (TransactionStatus.valueOf(compensableMethodContext.getTransactionContext().getStatus())) {
-                case TRYING:
+                case TRYING:// 事务发起方begin的时候，transaction状态为TRYING
+                    // 通过传过来的TransactionContext，在服务提供者创建Transaction并保持Transaction.xid一致，代表一个全局事务
                     transaction = transactionManager.propagationNewBegin(compensableMethodContext.getTransactionContext());
+                    // 调用远程事务参与方的try方法
                     return compensableMethodContext.proceed();
-                case CONFIRMING:
+                case CONFIRMING:// 事务发起方commit的时候,transaction状态为CONFIRMING
                     try {
                         transaction = transactionManager.propagationExistBegin(compensableMethodContext.getTransactionContext());
+                        // 调用远程事务参与方confirm方法
                         transactionManager.commit(asyncConfirm);
                     } catch (NoExistedTransactionException excepton) {
                         //the transaction has been commit,ignore it.
                     }
                     break;
-                case CANCELLING:
-
+                case CANCELLING:// 事务发起方rollback的时候,transaction状态为CANCELLING
                     try {
                         transaction = transactionManager.propagationExistBegin(compensableMethodContext.getTransactionContext());
+                        // 调用远程事务参与方的cancel方法
                         transactionManager.rollback(asyncCancel);
                     } catch (NoExistedTransactionException exception) {
                         //the transaction has been rollback,ignore it.

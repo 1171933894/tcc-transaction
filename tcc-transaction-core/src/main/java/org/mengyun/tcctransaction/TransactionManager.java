@@ -47,7 +47,9 @@ public class TransactionManager {
 
     public Transaction begin(Object uniqueIdentify) {
         Transaction transaction = new Transaction(uniqueIdentify,TransactionType.ROOT);
+        // 事务持久化，这里支持jdbc\redis\zookeeper\file等
         transactionRepository.create(transaction);
+        // 将Transaction绑定到当前线程
         registerTransaction(transaction);
         return transaction;
     }
@@ -109,7 +111,7 @@ public class TransactionManager {
      * 提交事务
      */
     public void commit(boolean asyncCommit) {
-        // 获取 事务
+        // 获取当前线程绑定的事务
         final Transaction transaction = getCurrentTransaction();
         // 设置 事务状态 为 CONFIRMING
         transaction.changeStatus(TransactionStatus.CONFIRMING);
@@ -169,7 +171,9 @@ public class TransactionManager {
 
     private void commitTransaction(Transaction transaction) {
         try {
-            transaction.commit();// 提交 事务
+            // 这里就是去执行事务参与者的confirm方法
+            transaction.commit();
+            // 执行成功就把持久化的事务删除掉
             transactionRepository.delete(transaction);// 删除 事务
         } catch (Throwable commitException) {
             logger.warn("compensable transaction confirm failed, recovery job will try to confirm later.", commitException);
