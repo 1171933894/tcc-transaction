@@ -103,7 +103,8 @@ public class CompensableMethodContext {
      * @return 方法类型
      */
     public MethodRole getMethodRole(boolean isTransactionActive) {
-        // Compensable.propagation默认是REQUIRED，也就是事务发起方为REQUIRED
+        // Compensable.propagation默认是REQUIRED，
+        // 也就是事务发起方为REQUIRED
         // 事务参与方配置了为SUPPORTS
         // 远程事务参与方没有配置默认REQUIRED
         if ((propagation.equals(Propagation.REQUIRED) && !isTransactionActive && transactionContext == null) ||// Propagation.REQUIRED：支持当前事务，当前没有事务，就新建一个事务。

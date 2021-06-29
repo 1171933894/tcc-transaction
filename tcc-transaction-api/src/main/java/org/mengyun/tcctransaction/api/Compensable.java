@@ -19,6 +19,8 @@ public @interface Compensable {
 
     /**
      * 传播级别
+     * 【巨坑】
+     * 事务参与方必须配置了为SUPPORTS，如果使用 REQUIRED 事务传播级别，事务恢复重试时，会发起新的事务
      */
     public Propagation propagation() default Propagation.REQUIRED;
     /**

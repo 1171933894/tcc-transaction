@@ -136,7 +136,7 @@ public class CompensableTransactionInterceptor {
                         transaction = transactionManager.propagationExistBegin(compensableMethodContext.getTransactionContext());
                         // 调用远程事务参与方confirm方法
                         transactionManager.commit(asyncConfirm);
-                    } catch (NoExistedTransactionException excepton) {
+                    } catch (NoExistedTransactionException excepton) {// 吃掉NoExistedTransactionException看得出来是为了支持空回滚
                         //the transaction has been commit,ignore it.
                     }
                     break;
