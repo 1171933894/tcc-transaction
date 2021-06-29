@@ -52,6 +52,14 @@ public class CompensableMethodContext {
         return method;
     }
 
+    /**
+     * 【该处为了避免tcc try阶段业务并发重复调用】
+     * 可以在 tcc事务发起者方法（try方法）添加一个业务主建，并使用@uniqueidentity 标示，
+     * 如示例项目tcc-transaction-dubbo-order的PaymentServiceImpl.makePayment方法（如下）：
+     * public void makePayment(@uniqueidentity String orderNo) ；cc框架将使用@uniqueidentity
+     * 注解标示的参数作为tcc的主事务xid，如果tcc事务发起者法同时执行多次，其tcc的主事务xid都是一样的，
+     * 这样仅有一个请求的tcc事务保存成功，其他的调用则失败。
+     */
     public Object getUniqueIdentity() {
         Annotation[][] annotations = this.getMethod().getParameterAnnotations();
 

@@ -29,13 +29,13 @@ public class TransactionRecovery {
      * 启动恢复事务逻辑
      */
     public void startRecover() {
-        // 加载异常事务集合
+        // 从持久化中查询未完成的事务
         /**
          * 异常事务的定义：当前时间超过 - 事务变更时间( 最后执行时间 ) >= 事务恢复间隔( RecoverConfig#getRecoverDuration() )。
          * 这里有一点要注意，已完成的事务会从事务存储器删除。
          */
         List<Transaction> transactions = loadErrorTransactions();
-        // 恢复异常事务集合
+        // 事务恢复操作,注意这里恢复操作只会重试confirming和cancelling状态的事务
         recoverErrorTransactions(transactions);
     }
 

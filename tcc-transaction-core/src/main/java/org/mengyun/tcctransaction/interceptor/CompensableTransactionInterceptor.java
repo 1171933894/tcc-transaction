@@ -125,6 +125,13 @@ public class CompensableTransactionInterceptor {
                     // 调用远程事务参与方的try方法
                     return compensableMethodContext.proceed();
                 case CONFIRMING:// 事务发起方commit的时候,transaction状态为CONFIRMING
+                    /**
+                     * 【注意】支持空回滚，但是不支持防悬挂
+                     * 悬挂的意思是：在分支事务执行情况下，Cancel 比 Try 接口先执行，出现的原因是 Try 由于网络拥堵而超时，
+                     * 事务管理器生成回滚，触发 Cancel 接口，而最终又收到了 Try 接口调用，但是 Cancel 比 Try 先到。
+                     * 框架是允许空回滚的逻辑，如果分支事务没有（有可能try还没有开始执行，或者事务已经回滚过，事务删除了）
+                     * 回滚会返回成功，事务管理器认为事务已回滚成功，整个事务回滚结束。而如果try方法最终到达，开始执行，分支事务创建，由于主事务已经回滚结束了，该分支事务不会因主事务回滚而被触发回滚了。这种情况下，定时恢复任务回扫描该分支事务，检查其主事务的状态，发现没有主事务，则回滚该分支事务。
+                     */
                     try {
                         transaction = transactionManager.propagationExistBegin(compensableMethodContext.getTransactionContext());
                         // 调用远程事务参与方confirm方法
