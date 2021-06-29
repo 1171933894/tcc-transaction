@@ -24,7 +24,7 @@ public class DefaultRecoverConfig implements RecoverConfig {
      */
     private int recoverDuration = 120; //120 seconds
     /**
-     * cron 表达式
+     * cron 表达式 (每分钟执行一次)
      */
     private String cronExpression = "0 */1 * * * ?";
 

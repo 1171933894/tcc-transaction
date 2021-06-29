@@ -16,6 +16,9 @@ import java.util.List;
 
 /**
  * Created by changmingxie on 11/10/15.
+ *
+ * Q：如果应用集群部署，会不会相同事务被多个定时任务同时重试？
+ * A：答案是不会，事务在重试时会乐观锁更新，同时只有一个应用节点能更新成功。
  */
 public class TransactionRecovery {
 
@@ -28,7 +31,8 @@ public class TransactionRecovery {
     public void startRecover() {
         // 加载异常事务集合
         /**
-         * 异常事务的定义：当前时间超过 - 事务变更时间( 最后执行时间 ) >= 事务恢复间隔( RecoverConfig#getRecoverDuration() )。这里有一点要注意，已完成的事务会从事务存储器删除。
+         * 异常事务的定义：当前时间超过 - 事务变更时间( 最后执行时间 ) >= 事务恢复间隔( RecoverConfig#getRecoverDuration() )。
+         * 这里有一点要注意，已完成的事务会从事务存储器删除。
          */
         List<Transaction> transactions = loadErrorTransactions();
         // 恢复异常事务集合

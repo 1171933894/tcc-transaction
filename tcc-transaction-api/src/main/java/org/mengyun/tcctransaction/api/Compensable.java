@@ -9,6 +9,10 @@ import java.lang.reflect.Method;
 /**
  * Created by changmingxie on 10/25/15.
  */
+
+/**
+ * 标记可补偿的方法注解
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Compensable {

@@ -34,7 +34,6 @@ public class CompensableMethodContext {
         this.propagation = compensable.propagation();
         // 获得 事务上下文
         this.transactionContext = FactoryBuilder.factoryOf(compensable.transactionContextEditor()).getInstance().get(pjp.getTarget(), method, pjp.getArgs());
-
     }
 
     public Compensable getAnnotation() {
