@@ -104,7 +104,9 @@ public abstract class CachableTransactionRepository implements TransactionReposi
     }
 
     public CachableTransactionRepository() {
-        transactionXidCompensableTransactionCache = CacheBuilder.newBuilder().expireAfterAccess(expireDuration, TimeUnit.SECONDS).maximumSize(1000).build();
+        transactionXidCompensableTransactionCache = CacheBuilder.newBuilder()
+                .expireAfterAccess(expireDuration, TimeUnit.SECONDS)
+                .maximumSize(1000).build();
     }
 
     /**
@@ -151,7 +153,10 @@ public abstract class CachableTransactionRepository implements TransactionReposi
      * 更新事务
      *
      * 若更新成功后，调用 #putToCache(...) 方法，添加事务到缓存。
-     * 若更新失败后，抛出 OptimisticLockException 异常。有两种情况会导致更新失败：(1) 该事务已经被提交，被删除；(2) 乐观锁更新时，缓存的事务的版本号( Transaction.version )和存储器里的事务的版本号不同，更新失败。为什么？在《TCC-Transaction 源码分析 —— 事务恢复》详细解析。更新失败，意味着缓存已经不不一致，调用 #removeFromCache(...) 方法，移除事务从缓存中。
+     * 若更新失败后，抛出 OptimisticLockException 异常。有两种情况会导致更新失败：
+     * (1) 该事务已经被提交，被删除；
+     * (2) 乐观锁更新时，缓存的事务的版本号( Transaction.version )和存储器里的事务的版本号不同，更新失败。
+     *      为什么？更新失败，意味着缓存已经不不一致，调用 #removeFromCache(...) 方法，移除事务从缓存中。
      *
      * @param transaction 事务
      * @return 更新数量

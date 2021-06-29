@@ -25,7 +25,8 @@ public class TransactionManager {
      * 当前线程事务队列
      *
      * 为什么使用队列存储当前线程事务？
-     *      TCC-Transaction 支持多个的事务独立存在，后创建的事务先提交，类似 Spring 的org.springframework.transaction.annotation.Propagation.REQUIRES_NEW 。在下文，很快我们就会看到 TCC-Transaction 自己的 org.mengyun.tcctransaction.api.Propagation 。
+     *      TCC-Transaction 支持多个的事务独立存在，后创建的事务先提交，类似 Spring 的org.springframework.transaction.annotation.Propagation.REQUIRES_NEW 。
+     *      在下文，很快我们就会看到 TCC-Transaction 自己的 org.mengyun.tcctransaction.api.Propagation 。
      */
     private static final ThreadLocal<Deque<Transaction>> CURRENT = new ThreadLocal<Deque<Transaction>>();
 

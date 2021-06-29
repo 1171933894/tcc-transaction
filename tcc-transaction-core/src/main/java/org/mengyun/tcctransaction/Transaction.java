@@ -39,7 +39,7 @@ public class Transaction implements Serializable {
      */
     private TransactionType transactionType;
     /**
-     * 重试次数 在 TCC 过程中，可能参与者异常崩溃，这个时候会进行重试直到成功或超过最大次数
+     * 重试次数 在 TCC 过程中，可能参与者异常崩溃，这个时候会进行重试直到成功或超过最大次数（用在事务恢复）
      */
     private volatile int retriedCount = 0;
     /**
@@ -51,7 +51,7 @@ public class Transaction implements Serializable {
      */
     private Date lastUpdateTime = new Date();
     /**
-     * 版本号 用于乐观锁更新事务
+     * 版本号 用于乐观锁更新事务（用在事务存储器）
      */
     private long version = 1;
     /**
